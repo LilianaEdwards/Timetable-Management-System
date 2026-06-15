@@ -57,11 +57,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Timetable Management System" },
-      { name: "description", content: "University of Computer Studies, Mandalay Timetable Management System — Team Blammer" },
+      { name: "description", content: "University of Computer Studies, Mandalay 
+Timetable Management System 
+Team Blammer" },
       { property: "og:title", content: "Timetable Management System" },
       { name: "twitter:title", content: "Timetable Management System" },
-      { property: "og:description", content: "University of Computer Studies, Mandalay Timetable Management System — Team Blammer" },
-      { name: "twitter:description", content: "University of Computer Studies, Mandalay Timetable Management System — Team Blammer" },
+      { property: "og:description", content: "University of Computer Studies, Mandalay 
+Timetable Management System 
+Team Blammer" },
+      { name: "twitter:description", content: "University of Computer Studies, Mandalay 
+Timetable Management System 
+Team Blammer" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/d03dfa20-2e75-4692-90dd-2b7f42c699d4" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/d03dfa20-2e75-4692-90dd-2b7f42c699d4" },
       { name: "twitter:card", content: "summary_large_image" },
