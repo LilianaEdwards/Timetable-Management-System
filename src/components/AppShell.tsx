@@ -62,7 +62,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
           )}
         >
           <nav className="flex flex-col gap-2 py-6">
-            {NAV.map((item) => {
+            {NAV.filter((item) => !item.adminOnly || isAdmin).map((item) => {
               const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
