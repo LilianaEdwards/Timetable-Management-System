@@ -36,12 +36,14 @@ function AddPage() {
             <TabsTrigger value="rooms">Rooms</TabsTrigger>
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="registrations">Registrations</TabsTrigger>
+            <TabsTrigger value="retakes">Retakes</TabsTrigger>
           </TabsList>
           <TabsContent value="students" className="pt-4"><StudentForm /></TabsContent>
           <TabsContent value="lecturers" className="pt-4"><LecturerForm /></TabsContent>
           <TabsContent value="rooms" className="pt-4"><RoomForm /></TabsContent>
           <TabsContent value="subjects" className="pt-4"><SubjectForm /></TabsContent>
           <TabsContent value="registrations" className="pt-4"><RegistrationForm /></TabsContent>
+          <TabsContent value="retakes" className="pt-4"><RetakeForm /></TabsContent>
         </Tabs>
       </Card>
     </AppShell>
