@@ -6,9 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { to: "/add", label: "Add Data", icon: PlusCircle, adminOnly: true },
-  { to: "/view", label: "View / Edit", icon: FileEdit, adminOnly: false },
+  { to: "/view", label: "View / Edit", icon: FileEdit, adminOnly: true },
   { to: "/generate", label: "Generate", icon: Sparkles, adminOnly: true },
   { to: "/timetable", label: "Timetable", icon: CalendarDays, adminOnly: false },
 ] as const;

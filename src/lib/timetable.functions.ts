@@ -39,7 +39,19 @@ export const generateTimetable = createServerFn({ method: "POST" })
     if (!subjects?.length) throw new Error("No subjects defined");
     if (!rooms?.length) throw new Error("No rooms defined");
 
-    // Build per-subject student set & lecturer
+    // Require each year (1..5) to have at least 6 subjects before scheduling
+    const byYear = new Map<number, number>();
+    for (const s of subjects as SubjectRow[] & { year: number }[]) {
+      byYear.set((s as any).year, (byYear.get((s as any).year) ?? 0) + 1);
+    }
+    const missing: string[] = [];
+    for (const y of [1, 2, 3, 4, 5]) {
+      const c = byYear.get(y) ?? 0;
+      if (c < 6) missing.push(`Year ${y} has ${c}/6`);
+    }
+    if (missing.length) {
+      throw new Error("All years need at least 6 subjects before generating: " + missing.join("; "));
+    }
     const studentsBySubject = new Map<string, Set<string>>();
     for (const s of subjects) studentsBySubject.set(s.id, new Set());
     for (const r of (regs ?? []) as RegRow[]) studentsBySubject.get(r.subject_id)?.add(r.student_id);
