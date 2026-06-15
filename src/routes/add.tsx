@@ -211,3 +211,83 @@ function RegistrationForm() {
     </form>
   );
 }
+
+function RetakeForm() {
+  const qc = useQueryClient();
+  const { data: students } = useQuery({ queryKey: ["students-options"], queryFn: async () => (await supabase.from("students").select("id,student_no,name,year").order("name")).data ?? [] });
+  const { data: subjects } = useQuery({ queryKey: ["subjects-options"], queryFn: async () => (await supabase.from("subjects").select("id,code,name,year").order("code")).data ?? [] });
+  const { data: retakes } = useQuery({
+    queryKey: ["retakes-list"],
+    queryFn: async () => (await supabase
+      .from("registrations")
+      .select("id,students(student_no,name,year),subjects(code,name,year)")
+      .eq("is_retake", true)
+    ).data ?? [],
+  });
+  const [f, setF] = useState({ student_id: "", subject_id: "" });
+  const [loading, setLoading] = useState(false);
+
+  const handleRemove = async (id: string) => {
+    if (!confirm("Remove this retake?")) return;
+    const { error } = await supabase.from("registrations").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Retake removed");
+    qc.invalidateQueries({ queryKey: ["retakes-list"] });
+    qc.invalidateQueries();
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Default subjects apply to every student in their year automatically. Use this panel to register a student for a
+        <strong> retake</strong> subject from another year — the generator factors retakes in when scheduling.
+      </p>
+      <form onSubmit={async (e) => {
+        e.preventDefault(); setLoading(true);
+        const { error } = await supabase.from("registrations").insert({ ...f, is_retake: true });
+        setLoading(false);
+        if (error) return toast.error(error.message);
+        toast.success("Retake added"); setF({ student_id: "", subject_id: "" });
+        qc.invalidateQueries({ queryKey: ["retakes-list"] });
+        qc.invalidateQueries();
+      }} className="grid sm:grid-cols-2 gap-4">
+        <div><Label>Student</Label>
+          <Select value={f.student_id} onValueChange={(v) => setF({ ...f, student_id: v })} required>
+            <SelectTrigger><SelectValue placeholder="Select student…" /></SelectTrigger>
+            <SelectContent>{(students ?? []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.student_no} — {s.name} (Y{s.year})</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div><Label>Retake Subject</Label>
+          <Select value={f.subject_id} onValueChange={(v) => setF({ ...f, subject_id: v })} required>
+            <SelectTrigger><SelectValue placeholder="Select subject…" /></SelectTrigger>
+            <SelectContent>{(subjects ?? []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.code} — {s.name} (Y{s.year})</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="sm:col-span-2"><Submit loading={loading} label="Add retake" /></div>
+      </form>
+
+      <div>
+        <h3 className="text-sm font-semibold text-brand-deep mb-2">Current retakes</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-muted text-brand-deep">
+              <tr><th className="px-4 py-2 text-left">Student</th><th className="px-4 py-2 text-left">Subject</th><th></th></tr>
+            </thead>
+            <tbody>
+              {(retakes ?? []).map((r: any) => (
+                <tr key={r.id} className="border-b hover:bg-muted/50">
+                  <td className="px-4 py-2">{r.students?.student_no} — {r.students?.name} (Y{r.students?.year})</td>
+                  <td className="px-4 py-2">{r.subjects?.code} — {r.subjects?.name} (Y{r.subjects?.year})</td>
+                  <td className="px-4 py-2 text-right">
+                    <Button variant="ghost" size="sm" onClick={() => handleRemove(r.id)}>Remove</Button>
+                  </td>
+                </tr>
+              ))}
+              {(retakes ?? []).length === 0 && <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">No retakes yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
