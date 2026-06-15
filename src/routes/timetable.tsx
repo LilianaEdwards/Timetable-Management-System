@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -99,11 +100,11 @@ function TimetablePage() {
             </thead>
             <tbody>
               {SLOT_LABELS.map((slot, sIdx) => (
-                <>
+                <Fragment key={slot}>
                   {sIdx === 3 && (
-                    <tr key="lunch"><td colSpan={6} className="bg-accent text-center py-2 font-semibold text-brand-deep">Lunch Break (12:00 PM — 1:00 PM)</td></tr>
+                    <tr><td colSpan={6} className="bg-accent text-center py-2 font-semibold text-brand-deep">Lunch Break (12:00 PM — 1:00 PM)</td></tr>
                   )}
-                  <tr key={slot}>
+                  <tr>
                     <td className="p-3 border bg-muted font-medium text-brand-deep">{slot}</td>
                     {DAYS.map((_, dIdx) => (
                       <td key={dIdx} className="p-2 border align-top min-w-40">
@@ -117,7 +118,7 @@ function TimetablePage() {
                       </td>
                     ))}
                   </tr>
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
