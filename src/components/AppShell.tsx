@@ -6,11 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/add", label: "Add Data", icon: PlusCircle },
-  { to: "/view", label: "View / Edit", icon: FileEdit },
-  { to: "/generate", label: "Generate", icon: Sparkles },
-  { to: "/timetable", label: "Timetable", icon: CalendarDays },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { to: "/add", label: "Add Data", icon: PlusCircle, adminOnly: true },
+  { to: "/view", label: "View / Edit", icon: FileEdit, adminOnly: false },
+  { to: "/generate", label: "Generate", icon: Sparkles, adminOnly: true },
+  { to: "/timetable", label: "Timetable", icon: CalendarDays, adminOnly: false },
 ] as const;
 
 export function AppShell({ children, title }: { children: ReactNode; title?: string }) {
@@ -62,7 +62,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
           )}
         >
           <nav className="flex flex-col gap-2 py-6">
-            {NAV.map((item) => {
+            {NAV.filter((item) => !item.adminOnly || isAdmin).map((item) => {
               const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
