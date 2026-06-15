@@ -57,19 +57,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Timetable Management System" },
-      { name: "description", content: "University of Computer Studies, Mandalay 
-Timetable Management System 
-Team Blammer" },
+      { name: "description", content: "This application generates conflict-free student and lecturer timetables based on real registration data." },
       { property: "og:title", content: "Timetable Management System" },
       { name: "twitter:title", content: "Timetable Management System" },
-      { property: "og:description", content: "University of Computer Studies, Mandalay 
-Timetable Management System 
-Team Blammer" },
-      { name: "twitter:description", content: "University of Computer Studies, Mandalay 
-Timetable Management System 
-Team Blammer" },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/d03dfa20-2e75-4692-90dd-2b7f42c699d4" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/d03dfa20-2e75-4692-90dd-2b7f42c699d4" },
+      { property: "og:description", content: "This application generates conflict-free student and lecturer timetables based on real registration data." },
+      { name: "twitter:description", content: "This application generates conflict-free student and lecturer timetables based on real registration data." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/62a7a97d-5832-4988-b773-b04646144e9a/id-preview-9488db62--40412280-5807-4c67-b5f0-1b5648dee86e.lovable.app-1781555921958.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/62a7a97d-5832-4988-b773-b04646144e9a/id-preview-9488db62--40412280-5807-4c67-b5f0-1b5648dee86e.lovable.app-1781555921958.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
