@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViewRouteImport } from './routes/view'
 import { Route as TimetableRouteImport } from './routes/timetable'
+import { Route as MyScheduleRouteImport } from './routes/my-schedule'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AddRouteImport } from './routes/add'
@@ -24,6 +25,11 @@ const ViewRoute = ViewRouteImport.update({
 const TimetableRoute = TimetableRouteImport.update({
   id: '/timetable',
   path: '/timetable',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyScheduleRoute = MyScheduleRouteImport.update({
+  id: '/my-schedule',
+  path: '/my-schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GenerateRoute = GenerateRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/add': typeof AddRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
+  '/my-schedule': typeof MyScheduleRoute
   '/timetable': typeof TimetableRoute
   '/view': typeof ViewRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/add': typeof AddRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
+  '/my-schedule': typeof MyScheduleRoute
   '/timetable': typeof TimetableRoute
   '/view': typeof ViewRoute
 }
@@ -69,15 +77,38 @@ export interface FileRoutesById {
   '/add': typeof AddRoute
   '/auth': typeof AuthRoute
   '/generate': typeof GenerateRoute
+  '/my-schedule': typeof MyScheduleRoute
   '/timetable': typeof TimetableRoute
   '/view': typeof ViewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/add' | '/auth' | '/generate' | '/timetable' | '/view'
+  fullPaths:
+    | '/'
+    | '/add'
+    | '/auth'
+    | '/generate'
+    | '/my-schedule'
+    | '/timetable'
+    | '/view'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/add' | '/auth' | '/generate' | '/timetable' | '/view'
-  id: '__root__' | '/' | '/add' | '/auth' | '/generate' | '/timetable' | '/view'
+  to:
+    | '/'
+    | '/add'
+    | '/auth'
+    | '/generate'
+    | '/my-schedule'
+    | '/timetable'
+    | '/view'
+  id:
+    | '__root__'
+    | '/'
+    | '/add'
+    | '/auth'
+    | '/generate'
+    | '/my-schedule'
+    | '/timetable'
+    | '/view'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -85,6 +116,7 @@ export interface RootRouteChildren {
   AddRoute: typeof AddRoute
   AuthRoute: typeof AuthRoute
   GenerateRoute: typeof GenerateRoute
+  MyScheduleRoute: typeof MyScheduleRoute
   TimetableRoute: typeof TimetableRoute
   ViewRoute: typeof ViewRoute
 }
@@ -103,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/timetable'
       fullPath: '/timetable'
       preLoaderRoute: typeof TimetableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-schedule': {
+      id: '/my-schedule'
+      path: '/my-schedule'
+      fullPath: '/my-schedule'
+      preLoaderRoute: typeof MyScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/generate': {
@@ -141,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AddRoute: AddRoute,
   AuthRoute: AuthRoute,
   GenerateRoute: GenerateRoute,
+  MyScheduleRoute: MyScheduleRoute,
   TimetableRoute: TimetableRoute,
   ViewRoute: ViewRoute,
 }
