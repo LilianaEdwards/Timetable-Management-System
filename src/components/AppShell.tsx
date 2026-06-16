@@ -1,22 +1,25 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { LayoutDashboard, PlusCircle, FileEdit, Sparkles, CalendarDays, LogOut, Menu, Search } from "lucide-react";
+import { LayoutDashboard, PlusCircle, FileEdit, Sparkles, CalendarDays, CalendarCheck, LogOut, Menu, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
-  { to: "/add", label: "Add Data", icon: PlusCircle, adminOnly: true },
-  { to: "/view", label: "View / Edit", icon: FileEdit, adminOnly: true },
-  { to: "/generate", label: "Generate", icon: Sparkles, adminOnly: true },
-  { to: "/timetable", label: "Timetable", icon: CalendarDays, adminOnly: false },
-] as const;
+type NavItem = { to: string; label: string; icon: any; show: (ctx: { isAdmin: boolean; isLecturer: boolean; isStudent: boolean }) => boolean };
+
+const NAV: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, show: (c) => c.isAdmin },
+  { to: "/add", label: "Add Data", icon: PlusCircle, show: (c) => c.isAdmin },
+  { to: "/view", label: "View / Edit", icon: FileEdit, show: (c) => c.isAdmin },
+  { to: "/generate", label: "Generate", icon: Sparkles, show: (c) => c.isAdmin },
+  { to: "/timetable", label: "Timetable", icon: CalendarDays, show: () => true },
+  { to: "/my-schedule", label: "My Schedule", icon: CalendarCheck, show: (c) => !c.isAdmin && (c.isLecturer || c.isStudent) },
+];
 
 export function AppShell({ children, title }: { children: ReactNode; title?: string }) {
   const [open, setOpen] = useState(true);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isLecturer, isStudent } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -62,7 +65,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
           )}
         >
           <nav className="flex flex-col gap-2 py-6">
-            {NAV.filter((item) => !item.adminOnly || isAdmin).map((item) => {
+            {NAV.filter((item) => item.show({ isAdmin, isLecturer, isStudent })).map((item) => {
               const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
