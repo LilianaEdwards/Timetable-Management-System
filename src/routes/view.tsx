@@ -31,8 +31,8 @@ function ViewPage() {
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="registrations">Registrations</TabsTrigger>
           </TabsList>
-          <TabsContent value="students" className="pt-4"><EntityTable table="students" columns={["student_no", "name", "email", "year"]} /></TabsContent>
-          <TabsContent value="lecturers" className="pt-4"><EntityTable table="lecturers" columns={["lecturer_no", "name", "email"]} /></TabsContent>
+          <TabsContent value="students" className="pt-4"><EntityTable table="students" columns={["student_no", "name", "email", "year", "default_password"]} /></TabsContent>
+          <TabsContent value="lecturers" className="pt-4"><EntityTable table="lecturers" columns={["lecturer_no", "name", "email", "default_password"]} /></TabsContent>
           <TabsContent value="rooms" className="pt-4"><EntityTable table="rooms" columns={["name", "capacity"]} /></TabsContent>
           <TabsContent value="subjects" className="pt-4"><EntityTable table="subjects" columns={["code", "name", "duration_hours", "year"]} /></TabsContent>
           <TabsContent value="registrations" className="pt-4"><RegistrationsTable /></TabsContent>

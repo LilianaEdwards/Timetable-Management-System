@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { createStudent, createLecturer } from "@/lib/people.functions";
 
 export const Route = createFileRoute("/add")({
   beforeLoad: async () => {
@@ -60,26 +62,30 @@ function Submit({ loading, label = "Add" }: { loading: boolean; label?: string }
 
 function StudentForm() {
   const qc = useQueryClient();
+  const addStudent = useServerFn(createStudent);
   const [f, setF] = useState({ student_no: "", name: "", email: "", year: "1" });
   const [loading, setLoading] = useState(false);
   return (
     <form onSubmit={async (e) => {
       e.preventDefault(); setLoading(true);
-      const { error } = await supabase.from("students").insert({ student_no: f.student_no, name: f.name, email: f.email || null, year: Number(f.year) });
-      setLoading(false);
-      if (error) return toast.error(error.message);
-      toast.success("Student added"); setF({ student_no: "", name: "", email: "", year: "1" });
-      qc.invalidateQueries();
+      try {
+        const res = await addStudent({ data: { student_no: f.student_no, name: f.name, email: f.email || undefined, year: Number(f.year) } });
+        toast.success(`Student added. Login: ${res.email} / ${res.password}`);
+        setF({ student_no: "", name: "", email: "", year: "1" });
+        qc.invalidateQueries();
+      } catch (err: any) { toast.error(err.message); }
+      finally { setLoading(false); }
     }} className="grid sm:grid-cols-2 gap-4">
       <div><Label>Student No</Label><Input required value={f.student_no} onChange={(e) => setF({ ...f, student_no: e.target.value })} /></div>
       <div><Label>Name</Label><Input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-      <div><Label>Email</Label><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+      <div><Label>Email (optional)</Label><Input type="email" placeholder="defaults to name@student.ucsm" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
       <div><Label>Year</Label>
         <Select value={f.year} onValueChange={(v) => setF({ ...f, year: v })}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>{[1, 2, 3, 4, 5].map(y => <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>)}</SelectContent>
         </Select>
       </div>
+      <p className="sm:col-span-2 text-xs text-muted-foreground">Default password will be <code>name@student.ucsm</code> (lowercase, no spaces).</p>
       <div className="sm:col-span-2"><Submit loading={loading} /></div>
     </form>
   );
@@ -87,20 +93,24 @@ function StudentForm() {
 
 function LecturerForm() {
   const qc = useQueryClient();
+  const addLecturer = useServerFn(createLecturer);
   const [f, setF] = useState({ lecturer_no: "", name: "", email: "" });
   const [loading, setLoading] = useState(false);
   return (
     <form onSubmit={async (e) => {
       e.preventDefault(); setLoading(true);
-      const { error } = await supabase.from("lecturers").insert({ lecturer_no: f.lecturer_no, name: f.name, email: f.email || null });
-      setLoading(false);
-      if (error) return toast.error(error.message);
-      toast.success("Lecturer added"); setF({ lecturer_no: "", name: "", email: "" });
-      qc.invalidateQueries();
+      try {
+        const res = await addLecturer({ data: { lecturer_no: f.lecturer_no, name: f.name, email: f.email || undefined } });
+        toast.success(`Lecturer added. Login: ${res.email} / ${res.password}`);
+        setF({ lecturer_no: "", name: "", email: "" });
+        qc.invalidateQueries();
+      } catch (err: any) { toast.error(err.message); }
+      finally { setLoading(false); }
     }} className="grid sm:grid-cols-2 gap-4">
       <div><Label>Lecturer No</Label><Input required value={f.lecturer_no} onChange={(e) => setF({ ...f, lecturer_no: e.target.value })} /></div>
       <div><Label>Name</Label><Input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-      <div className="sm:col-span-2"><Label>Email</Label><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+      <div className="sm:col-span-2"><Label>Email (optional)</Label><Input type="email" placeholder="defaults to name@lecturer.ucsm" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+      <p className="sm:col-span-2 text-xs text-muted-foreground">Default password will be <code>name@lecturer.ucsm</code> (lowercase, no spaces).</p>
       <div className="sm:col-span-2"><Submit loading={loading} /></div>
     </form>
   );

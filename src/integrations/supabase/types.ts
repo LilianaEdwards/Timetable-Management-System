@@ -16,21 +16,27 @@ export type Database = {
     Tables: {
       lecturers: {
         Row: {
+          auth_user_id: string | null
           created_at: string
+          default_password: string | null
           email: string | null
           id: string
           lecturer_no: string
           name: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
+          default_password?: string | null
           email?: string | null
           id?: string
           lecturer_no: string
           name: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
+          default_password?: string | null
           email?: string | null
           id?: string
           lecturer_no?: string
@@ -121,7 +127,9 @@ export type Database = {
       }
       students: {
         Row: {
+          auth_user_id: string | null
           created_at: string
+          default_password: string | null
           email: string | null
           id: string
           name: string
@@ -129,7 +137,9 @@ export type Database = {
           year: number
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
+          default_password?: string | null
           email?: string | null
           id?: string
           name: string
@@ -137,7 +147,9 @@ export type Database = {
           year: number
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
+          default_password?: string | null
           email?: string | null
           id?: string
           name?: string
