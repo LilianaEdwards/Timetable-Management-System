@@ -24,6 +24,7 @@ function TimetablePage() {
   const { isAdmin } = useAuth();
   const [mode, setMode] = useState<ViewMode>("year");
   const [selected, setSelected] = useState<string>("1");
+  const [semester, setSemester] = useState<"1" | "2">("1");
 
   // Non-admins are restricted to the year filter
   useEffect(() => {
@@ -34,10 +35,11 @@ function TimetablePage() {
   }, [isAdmin, mode]);
 
   const { data: entries } = useQuery({
-    queryKey: ["timetable-entries"],
+    queryKey: ["timetable-entries", semester],
     queryFn: async () => (await supabase
       .from("timetable_entries")
-      .select("id,day,start_slot,end_slot,subject_id,room_id,subjects(code,name,year,duration_hours,lecturer_id,lecturers(name)),rooms(name,capacity)")
+      .select("id,day,start_slot,end_slot,subject_id,room_id,semester,subjects(code,name,year,semester,credit,lecturer_id,lecturers(name)),rooms(name,capacity)")
+      .eq("semester", Number(semester))
     ).data ?? [],
   });
   const { data: regs } = useQuery({
@@ -80,6 +82,16 @@ function TimetablePage() {
     <AppShell title="Timetable">
       <div className="bg-surface-2 rounded-2xl p-6 shadow-[3px_3px_10px_rgba(188,188,188,0.4)]">
         <div className="flex flex-wrap items-end gap-4 mb-6 print:hidden">
+          <div>
+            <label className="text-xs uppercase text-muted-foreground">Semester</label>
+            <Select value={semester} onValueChange={(v) => setSemester(v as "1" | "2")}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Semester I</SelectItem>
+                <SelectItem value="2">Semester II</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {isAdmin && (
             <div>
               <label className="text-xs uppercase text-muted-foreground">View</label>
@@ -130,7 +142,11 @@ function TimetablePage() {
                     <Fragment key={sIdx}>
                       {sIdx === 3 && <td className="border bg-accent/40" />}
                       <td className="p-2 border align-top min-w-40">
-                        {grid[dIdx][sIdx].map((e: any) => (
+                        {grid[dIdx][sIdx].length === 0 && mode !== "all" && mode !== "room" && selected ? (
+                          <div className="rounded-md bg-muted/50 border border-dashed border-muted-foreground/30 p-2 text-xs text-muted-foreground italic text-center">
+                            Self-Study
+                          </div>
+                        ) : grid[dIdx][sIdx].map((e: any) => (
                           <div key={e.id + "-" + sIdx} className="rounded-md bg-brand/10 border-l-4 border-brand p-2 mb-1 text-xs">
                             <div className="font-semibold text-brand-deep">{e.subjects?.code}</div>
                             <div className="text-foreground">{e.subjects?.name}</div>

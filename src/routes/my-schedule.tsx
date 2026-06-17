@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DAYS, SLOT_LABELS } from "@/lib/timetable-constants";
 
 export const Route = createFileRoute("/my-schedule")({
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/my-schedule")({
 function MySchedulePage() {
   const { user, isLecturer, isStudent } = useAuth();
   const email = user?.email ?? "";
+  const [semester, setSemester] = useState<"1" | "2">("1");
 
   const { data: lecturerMatch } = useQuery({
     queryKey: ["me-lecturer", email],
@@ -35,10 +37,11 @@ function MySchedulePage() {
   });
 
   const { data: entries } = useQuery({
-    queryKey: ["timetable-entries"],
+    queryKey: ["timetable-entries", semester],
     queryFn: async () => (await supabase
       .from("timetable_entries")
-      .select("id,day,start_slot,end_slot,subject_id,room_id,subjects(code,name,year,lecturer_id,lecturers(name)),rooms(name)")
+      .select("id,day,start_slot,end_slot,subject_id,room_id,semester,subjects(code,name,year,semester,lecturer_id,lecturers(name)),rooms(name)")
+      .eq("semester", Number(semester))
     ).data ?? [],
   });
 
@@ -77,7 +80,17 @@ function MySchedulePage() {
   return (
     <AppShell title={heading}>
       <div className="bg-surface-2 rounded-2xl p-6 shadow-[3px_3px_10px_rgba(188,188,188,0.4)]">
-        <div className="flex items-center mb-6 print:hidden">
+        <div className="flex flex-wrap items-end gap-4 mb-6 print:hidden">
+          <div>
+            <label className="text-xs uppercase text-muted-foreground">Semester</label>
+            <Select value={semester} onValueChange={(v) => setSemester(v as "1" | "2")}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Semester I</SelectItem>
+                <SelectItem value="2">Semester II</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button variant="outline" className="ml-auto" onClick={() => window.print()}>
             <Printer className="h-4 w-4 mr-2" /> Print / PDF
           </Button>
@@ -111,7 +124,11 @@ function MySchedulePage() {
                     <Fragment key={sIdx}>
                       {sIdx === 3 && <td className="border bg-accent/40" />}
                       <td className="p-2 border align-top min-w-40">
-                        {grid[dIdx][sIdx].map((e: any) => (
+                        {grid[dIdx][sIdx].length === 0 && !noMatch ? (
+                          <div className="rounded-md bg-muted/50 border border-dashed border-muted-foreground/30 p-2 text-xs text-muted-foreground italic text-center">
+                            Self-Study
+                          </div>
+                        ) : grid[dIdx][sIdx].map((e: any) => (
                           <div key={e.id + "-" + sIdx} className="rounded-md bg-brand/10 border-l-4 border-brand p-2 mb-1 text-xs">
                             <div className="font-semibold text-brand-deep">{e.subjects?.code}</div>
                             <div className="text-foreground">{e.subjects?.name}</div>
