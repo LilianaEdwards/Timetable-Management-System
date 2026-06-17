@@ -164,6 +164,7 @@ export type Database = {
           created_at: string
           duration_hours: number
           id: string
+          joint_group: string | null
           lecturer_id: string | null
           name: string
           year: number
@@ -173,6 +174,7 @@ export type Database = {
           created_at?: string
           duration_hours: number
           id?: string
+          joint_group?: string | null
           lecturer_id?: string | null
           name: string
           year: number
@@ -182,6 +184,7 @@ export type Database = {
           created_at?: string
           duration_hours?: number
           id?: string
+          joint_group?: string | null
           lecturer_id?: string | null
           name?: string
           year?: number
