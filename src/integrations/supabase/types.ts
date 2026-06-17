@@ -162,31 +162,37 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          credit: number
           duration_hours: number
           id: string
           joint_group: string | null
           lecturer_id: string | null
           name: string
+          semester: number
           year: number
         }
         Insert: {
           code: string
           created_at?: string
+          credit?: number
           duration_hours: number
           id?: string
           joint_group?: string | null
           lecturer_id?: string | null
           name: string
+          semester?: number
           year: number
         }
         Update: {
           code?: string
           created_at?: string
+          credit?: number
           duration_hours?: number
           id?: string
           joint_group?: string | null
           lecturer_id?: string | null
           name?: string
+          semester?: number
           year?: number
         }
         Relationships: [
@@ -206,6 +212,7 @@ export type Database = {
           generated_at: string
           id: string
           room_id: string
+          semester: number
           start_slot: number
           subject_id: string
         }
@@ -215,6 +222,7 @@ export type Database = {
           generated_at?: string
           id?: string
           room_id: string
+          semester?: number
           start_slot: number
           subject_id: string
         }
@@ -224,6 +232,7 @@ export type Database = {
           generated_at?: string
           id?: string
           room_id?: string
+          semester?: number
           start_slot?: number
           subject_id?: string
         }
