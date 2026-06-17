@@ -142,7 +142,11 @@ function TimetablePage() {
                     <Fragment key={sIdx}>
                       {sIdx === 3 && <td className="border bg-accent/40" />}
                       <td className="p-2 border align-top min-w-40">
-                        {grid[dIdx][sIdx].map((e: any) => (
+                        {grid[dIdx][sIdx].length === 0 && mode !== "all" && mode !== "room" && selected ? (
+                          <div className="rounded-md bg-muted/50 border border-dashed border-muted-foreground/30 p-2 text-xs text-muted-foreground italic text-center">
+                            Self-Study
+                          </div>
+                        ) : grid[dIdx][sIdx].map((e: any) => (
                           <div key={e.id + "-" + sIdx} className="rounded-md bg-brand/10 border-l-4 border-brand p-2 mb-1 text-xs">
                             <div className="font-semibold text-brand-deep">{e.subjects?.code}</div>
                             <div className="text-foreground">{e.subjects?.name}</div>
