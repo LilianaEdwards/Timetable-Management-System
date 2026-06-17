@@ -182,6 +182,9 @@ function SubjectForm() {
           </SelectContent>
         </Select>
       </div>
+      <div className="sm:col-span-2"><Label>Joint Group <span className="text-xs text-muted-foreground">(optional — subjects sharing this label can't overlap in time, e.g. cross-year joint lectures)</span></Label>
+        <Input value={f.joint_group} onChange={(e) => setF({ ...f, joint_group: e.target.value })} placeholder="e.g. JOINT-A" />
+      </div>
       <div className="sm:col-span-2"><Submit loading={loading} /></div>
     </form>
   );
