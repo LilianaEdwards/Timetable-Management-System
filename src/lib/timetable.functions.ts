@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { DAYS, SLOT_LABELS, TWO_HOUR_STARTS } from "@/lib/timetable-constants";
 
-type SubjectRow = { id: string; code: string; name: string; lecturer_id: string | null; duration_hours: number };
+type SubjectRow = { id: string; code: string; name: string; lecturer_id: string | null; duration_hours: number; joint_group?: string | null };
 type RegRow = { student_id: string; subject_id: string };
 type RoomRow = { id: string; name: string; capacity: number };
 
