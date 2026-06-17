@@ -74,7 +74,25 @@ function EntityTable({ table, columns }: { table: string; columns: string[] }) {
             <tbody>
               {filtered.map((r: any) => (
                 <tr key={r.id} className="border-b hover:bg-muted/50">
-                  {columns.map(c => <td key={c} className="px-4 py-2">{String(r[c] ?? "")}</td>)}
+                  {columns.map(c => (
+                    <td key={c} className="px-4 py-2">
+                      {c === "joint_group" && table === "subjects" ? (
+                        <Input
+                          defaultValue={r[c] ?? ""}
+                          placeholder="—"
+                          className="h-8 max-w-[160px]"
+                          onBlur={async (e) => {
+                            const v = e.target.value.trim() || null;
+                            if (v === (r[c] ?? null)) return;
+                            const { error } = await supabase.from("subjects").update({ joint_group: v }).eq("id", r.id);
+                            if (error) return toast.error(error.message);
+                            toast.success("Joint group updated");
+                            qc.invalidateQueries({ queryKey: [table, "list"] });
+                          }}
+                        />
+                      ) : String(r[c] ?? "")}
+                    </td>
+                  ))}
                   <td className="px-4 py-2">
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
