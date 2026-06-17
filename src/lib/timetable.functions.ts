@@ -93,6 +93,7 @@ export const generateTimetable = createServerFn({ method: "POST" })
         const a = ordered[i], b = ordered[j];
         let conflict = false;
         if (a.lecturer_id && a.lecturer_id === b.lecturer_id) conflict = true;
+        if (!conflict && a.joint_group && b.joint_group && a.joint_group === b.joint_group) conflict = true;
         if (!conflict) {
           const sa = studentsBySubject.get(a.id)!, sb = studentsBySubject.get(b.id)!;
           for (const sid of sa) if (sb.has(sid)) { conflict = true; break; }
