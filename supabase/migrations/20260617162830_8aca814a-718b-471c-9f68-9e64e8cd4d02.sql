@@ -1,0 +1,2 @@
+ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS joint_group text;
+COMMENT ON COLUMN public.subjects.joint_group IS 'Subjects sharing the same joint_group cannot be scheduled at overlapping times (e.g. cross-year joint lectures).';

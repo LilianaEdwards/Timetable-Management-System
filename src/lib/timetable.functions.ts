@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { DAYS, SLOT_LABELS, TWO_HOUR_STARTS } from "@/lib/timetable-constants";
 
-type SubjectRow = { id: string; code: string; name: string; lecturer_id: string | null; duration_hours: number };
+type SubjectRow = { id: string; code: string; name: string; lecturer_id: string | null; duration_hours: number; joint_group?: string | null };
 type RegRow = { student_id: string; subject_id: string };
 type RoomRow = { id: string; name: string; capacity: number };
 
@@ -32,7 +32,7 @@ export const generateTimetable = createServerFn({ method: "POST" })
     if (!isAdmin) throw new Error("Only admins can generate timetables");
 
     const [{ data: subjects }, { data: regs }, { data: rooms }] = await Promise.all([
-      supabase.from("subjects").select("id,code,name,lecturer_id,duration_hours"),
+      supabase.from("subjects").select("id,code,name,lecturer_id,duration_hours,joint_group,year"),
       supabase.from("registrations").select("student_id,subject_id"),
       supabase.from("rooms").select("id,name,capacity"),
     ]);
@@ -93,6 +93,7 @@ export const generateTimetable = createServerFn({ method: "POST" })
         const a = ordered[i], b = ordered[j];
         let conflict = false;
         if (a.lecturer_id && a.lecturer_id === b.lecturer_id) conflict = true;
+        if (!conflict && a.joint_group && b.joint_group && a.joint_group === b.joint_group) conflict = true;
         if (!conflict) {
           const sa = studentsBySubject.get(a.id)!, sb = studentsBySubject.get(b.id)!;
           for (const sid of sa) if (sb.has(sid)) { conflict = true; break; }
