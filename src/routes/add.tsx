@@ -142,7 +142,7 @@ function SubjectForm() {
     queryKey: ["lecturers-options"],
     queryFn: async () => (await supabase.from("lecturers").select("id,name").order("name")).data ?? [],
   });
-  const [f, setF] = useState({ code: "", name: "", lecturer_id: "", duration_hours: "1", year: "1", joint_group: "" });
+  const [f, setF] = useState({ code: "", name: "", lecturer_id: "", credit: "2", year: "1", semester: "1", joint_group: "" });
   const [loading, setLoading] = useState(false);
   return (
     <form onSubmit={async (e) => {
@@ -150,13 +150,15 @@ function SubjectForm() {
       const { error } = await supabase.from("subjects").insert({
         code: f.code, name: f.name,
         lecturer_id: f.lecturer_id || null,
-        duration_hours: Number(f.duration_hours),
+        duration_hours: 1,
+        credit: Number(f.credit),
         year: Number(f.year),
+        semester: Number(f.semester),
         joint_group: f.joint_group.trim() || null,
       });
       setLoading(false);
       if (error) return toast.error(error.message);
-      toast.success("Subject added"); setF({ code: "", name: "", lecturer_id: "", duration_hours: "1", year: "1", joint_group: "" });
+      toast.success("Subject added"); setF({ code: "", name: "", lecturer_id: "", credit: "2", year: "1", semester: "1", joint_group: "" });
       qc.invalidateQueries();
     }} className="grid sm:grid-cols-2 gap-4">
       <div><Label>Code</Label><Input required value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></div>
@@ -173,18 +175,25 @@ function SubjectForm() {
           <SelectContent>{[1, 2, 3, 4, 5].map(y => <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-      <div className="sm:col-span-2"><Label>Duration</Label>
-        <Select value={f.duration_hours} onValueChange={(v) => setF({ ...f, duration_hours: v })}>
+      <div><Label>Semester</Label>
+        <Select value={f.semester} onValueChange={(v) => setF({ ...f, semester: v })}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">1 hour</SelectItem>
-            <SelectItem value="2">2 consecutive hours</SelectItem>
+            <SelectItem value="1">Semester I</SelectItem>
+            <SelectItem value="2">Semester II</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div><Label>Credit <span className="text-xs text-muted-foreground">(slots/week)</span></Label>
+        <Input required type="number" min={1} max={30} value={f.credit}
+          onChange={(e) => setF({ ...f, credit: e.target.value })} />
       </div>
       <div className="sm:col-span-2"><Label>Joint Group <span className="text-xs text-muted-foreground">(optional — subjects sharing this label can't overlap in time, e.g. cross-year joint lectures)</span></Label>
         <Input value={f.joint_group} onChange={(e) => setF({ ...f, joint_group: e.target.value })} placeholder="e.g. JOINT-A" />
       </div>
+      <p className="sm:col-span-2 text-xs text-muted-foreground">
+        Total credits per Year × Semester must be ≤ 30 (5 days × 6 slots). Remaining slots show as <strong>Self-Study</strong>.
+      </p>
       <div className="sm:col-span-2"><Submit loading={loading} /></div>
     </form>
   );
