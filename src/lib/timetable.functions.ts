@@ -32,7 +32,7 @@ export const generateTimetable = createServerFn({ method: "POST" })
     if (!isAdmin) throw new Error("Only admins can generate timetables");
 
     const [{ data: subjects }, { data: regs }, { data: rooms }] = await Promise.all([
-      supabase.from("subjects").select("id,code,name,lecturer_id,duration_hours"),
+      supabase.from("subjects").select("id,code,name,lecturer_id,duration_hours,joint_group,year"),
       supabase.from("registrations").select("student_id,subject_id"),
       supabase.from("rooms").select("id,name,capacity"),
     ]);
