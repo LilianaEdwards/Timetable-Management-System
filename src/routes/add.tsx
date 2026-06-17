@@ -142,7 +142,7 @@ function SubjectForm() {
     queryKey: ["lecturers-options"],
     queryFn: async () => (await supabase.from("lecturers").select("id,name").order("name")).data ?? [],
   });
-  const [f, setF] = useState({ code: "", name: "", lecturer_id: "", duration_hours: "1", year: "1" });
+  const [f, setF] = useState({ code: "", name: "", lecturer_id: "", duration_hours: "1", year: "1", joint_group: "" });
   const [loading, setLoading] = useState(false);
   return (
     <form onSubmit={async (e) => {
@@ -152,10 +152,11 @@ function SubjectForm() {
         lecturer_id: f.lecturer_id || null,
         duration_hours: Number(f.duration_hours),
         year: Number(f.year),
+        joint_group: f.joint_group.trim() || null,
       });
       setLoading(false);
       if (error) return toast.error(error.message);
-      toast.success("Subject added"); setF({ code: "", name: "", lecturer_id: "", duration_hours: "1", year: "1" });
+      toast.success("Subject added"); setF({ code: "", name: "", lecturer_id: "", duration_hours: "1", year: "1", joint_group: "" });
       qc.invalidateQueries();
     }} className="grid sm:grid-cols-2 gap-4">
       <div><Label>Code</Label><Input required value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></div>
