@@ -8,6 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/view")({
   beforeLoad: async () => {
@@ -18,6 +19,13 @@ export const Route = createFileRoute("/view")({
   },
   component: ViewPage,
 });
+
+// column types — drive cell rendering
+type ColType = "text" | "number" | "bool";
+type Col = { key: string; type?: ColType };
+const text = (key: string): Col => ({ key, type: "text" });
+const num = (key: string): Col => ({ key, type: "number" });
+const bool = (key: string): Col => ({ key, type: "bool" });
 
 function ViewPage() {
   return (
@@ -31,10 +39,18 @@ function ViewPage() {
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="registrations">Registrations</TabsTrigger>
           </TabsList>
-          <TabsContent value="students" className="pt-4"><EntityTable table="students" columns={["student_no", "name", "email", "year", "default_password"]} /></TabsContent>
-          <TabsContent value="lecturers" className="pt-4"><EntityTable table="lecturers" columns={["lecturer_no", "name", "email", "default_password"]} /></TabsContent>
-          <TabsContent value="rooms" className="pt-4"><EntityTable table="rooms" columns={["name", "capacity"]} /></TabsContent>
-          <TabsContent value="subjects" className="pt-4"><EntityTable table="subjects" columns={["code", "name", "credit", "year", "semester", "joint_group"]} /></TabsContent>
+          <TabsContent value="students" className="pt-4">
+            <EntityTable table="students" columns={[text("student_no"), text("name"), text("email"), num("year"), text("default_password")]} />
+          </TabsContent>
+          <TabsContent value="lecturers" className="pt-4">
+            <EntityTable table="lecturers" columns={[text("lecturer_no"), text("name"), text("email"), text("default_password")]} />
+          </TabsContent>
+          <TabsContent value="rooms" className="pt-4">
+            <EntityTable table="rooms" columns={[text("name"), num("capacity")]} />
+          </TabsContent>
+          <TabsContent value="subjects" className="pt-4">
+            <EntityTable table="subjects" columns={[text("code"), text("name"), num("credit"), num("year"), num("semester"), bool("is_consecutive"), text("joint_group")]} />
+          </TabsContent>
           <TabsContent value="registrations" className="pt-4"><RegistrationsTable /></TabsContent>
         </Tabs>
       </div>
@@ -42,7 +58,7 @@ function ViewPage() {
   );
 }
 
-function EntityTable({ table, columns }: { table: string; columns: string[] }) {
+function EntityTable({ table, columns }: { table: string; columns: Col[] }) {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const { data, isLoading } = useQuery({
@@ -50,14 +66,24 @@ function EntityTable({ table, columns }: { table: string; columns: string[] }) {
     queryFn: async () => (await (supabase.from(table as any).select("*").order("created_at", { ascending: false }))).data ?? [],
   });
   const filtered = (data ?? []).filter((r: any) =>
-    columns.some(c => String(r[c] ?? "").toLowerCase().includes(q.toLowerCase()))
+    columns.some(c => String(r[c.key] ?? "").toLowerCase().includes(q.toLowerCase()))
   );
+
+  const update = async (id: string, key: string, value: any) => {
+    const { error } = await supabase.from(table as any).update({ [key]: value }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Updated");
+    qc.invalidateQueries({ queryKey: [table, "list"] });
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this record?")) return;
     const { error } = await supabase.from(table as any).delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Deleted"); qc.invalidateQueries({ queryKey: [table, "list"] });
+    toast.success("Deleted");
+    qc.invalidateQueries({ queryKey: [table, "list"] });
   };
+
   return (
     <div>
       <div className="flex items-center mb-4 gap-2">
@@ -69,28 +95,37 @@ function EntityTable({ table, columns }: { table: string; columns: string[] }) {
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-muted text-brand-deep">
-              <tr>{columns.map(c => <th key={c} className="px-4 py-2 text-left capitalize">{c.replace(/_/g, " ")}</th>)}<th></th></tr>
+              <tr>
+                {columns.map(c => <th key={c.key} className="px-4 py-2 text-left capitalize">{c.key.replace(/_/g, " ")}</th>)}
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               {filtered.map((r: any) => (
                 <tr key={r.id} className="border-b hover:bg-muted/50">
                   {columns.map(c => (
-                    <td key={c} className="px-4 py-2">
-                      {c === "joint_group" && table === "subjects" ? (
+                    <td key={c.key} className="px-4 py-2">
+                      {c.type === "bool" ? (
+                        <Checkbox
+                          checked={!!r[c.key]}
+                          onCheckedChange={(v) => update(r.id, c.key, !!v)}
+                        />
+                      ) : (
                         <Input
-                          defaultValue={r[c] ?? ""}
+                          type={c.type === "number" ? "number" : "text"}
+                          defaultValue={r[c.key] ?? ""}
                           placeholder="—"
-                          className="h-8 max-w-[160px]"
-                          onBlur={async (e) => {
-                            const v = e.target.value.trim() || null;
-                            if (v === (r[c] ?? null)) return;
-                            const { error } = await supabase.from("subjects").update({ joint_group: v }).eq("id", r.id);
-                            if (error) return toast.error(error.message);
-                            toast.success("Joint group updated");
-                            qc.invalidateQueries({ queryKey: [table, "list"] });
+                          className="h-8 min-w-[120px]"
+                          onBlur={(e) => {
+                            let v: any = e.target.value;
+                            if (c.type === "number") v = v === "" ? null : Number(v);
+                            else v = v.trim() === "" ? null : v.trim();
+                            const cur = r[c.key] ?? null;
+                            if (v === cur) return;
+                            update(r.id, c.key, v);
                           }}
                         />
-                      ) : String(r[c] ?? "")}
+                      )}
                     </td>
                   ))}
                   <td className="px-4 py-2">
@@ -121,6 +156,11 @@ function RegistrationsTable() {
     if (error) return toast.error(error.message);
     toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["registrations", "joined"] });
   };
+  const toggleRetake = async (id: string, v: boolean) => {
+    const { error } = await supabase.from("registrations").update({ is_retake: v }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Updated"); qc.invalidateQueries({ queryKey: ["registrations", "joined"] });
+  };
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -132,7 +172,7 @@ function RegistrationsTable() {
             <tr key={r.id} className="border-b hover:bg-muted/50">
               <td className="px-4 py-2">{r.students?.student_no} — {r.students?.name}</td>
               <td className="px-4 py-2">{r.subjects?.code} — {r.subjects?.name}</td>
-              <td className="px-4 py-2">{r.is_retake ? "Yes" : "No"}</td>
+              <td className="px-4 py-2"><Checkbox checked={!!r.is_retake} onCheckedChange={(v) => toggleRetake(r.id, !!v)} /></td>
               <td className="px-4 py-2"><Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
             </tr>
           ))}

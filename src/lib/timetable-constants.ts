@@ -10,5 +10,5 @@ export const SLOT_LABELS = [
 ];
 export const MORNING_SLOTS = [0, 1, 2];
 export const AFTERNOON_SLOTS = [3, 4, 5];
-// Valid 2-hour start slots — must be consecutive within the same half-day
-export const TWO_HOUR_STARTS = [0, 1, 3, 4];
+// Valid 2-hour start slots — restricted to 9–11 AM (slot 0) and 2–4 PM (slot 4)
+export const TWO_HOUR_STARTS = [0, 4];
