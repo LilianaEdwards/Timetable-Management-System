@@ -165,6 +165,7 @@ export type Database = {
           credit: number
           duration_hours: number
           id: string
+          is_consecutive: boolean
           joint_group: string | null
           lecturer_id: string | null
           name: string
@@ -177,6 +178,7 @@ export type Database = {
           credit?: number
           duration_hours: number
           id?: string
+          is_consecutive?: boolean
           joint_group?: string | null
           lecturer_id?: string | null
           name: string
@@ -189,6 +191,7 @@ export type Database = {
           credit?: number
           duration_hours?: number
           id?: string
+          is_consecutive?: boolean
           joint_group?: string | null
           lecturer_id?: string | null
           name?: string
