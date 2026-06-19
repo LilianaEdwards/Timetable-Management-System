@@ -9,6 +9,7 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DAYS, SLOT_LABELS } from "@/lib/timetable-constants";
+import { ChangePasswordCard } from "@/components/ChangePasswordCard";
 
 export const Route = createFileRoute("/my-schedule")({
   beforeLoad: async () => {
@@ -147,6 +148,7 @@ function MySchedulePage() {
           <p className="text-center text-muted-foreground mt-6">No scheduled entries yet.</p>
         )}
       </div>
+      <ChangePasswordCard />
     </AppShell>
   );
 }
