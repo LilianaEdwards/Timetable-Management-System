@@ -96,10 +96,24 @@ export const generateTimetable = createServerFn({ method: "POST" })
 
     const placed: Block[] = [];
     const roomBusy = new Map<string, Set<string>>();
-    const subjectDay = new Map<string, Set<number>>();
+    const subjectDay = new Map<string, number[]>(); // day -> count placed
+    const yearSlotLoad = new Map<string, number>(); // `${year}-${day}-${slot}` -> count (for diversity)
     const unschedulable: { code: string; name: string; reason: string }[] = [];
 
     const key = (d: number, s: number) => `${d}-${s}`;
+    const ysKey = (y: number, d: number, s: number) => `${y}-${d}-${s}`;
+
+    // Deterministic but well-mixed shuffle (Fisher–Yates with seeded PRNG)
+    let seed = subjects.length * 9301 + semester * 49297 + 233280;
+    const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
 
     function slotFreeFor(s: SubjectRow, day: number, slot: number, roomId: string): boolean {
       const k = key(day, slot);
@@ -118,8 +132,55 @@ export const generateTimetable = createServerFn({ method: "POST" })
       for (let sl = startSlot; sl <= endSlot; sl++) {
         if (!roomBusy.has(key(day, sl))) roomBusy.set(key(day, sl), new Set());
         roomBusy.get(key(day, sl))!.add(roomId);
+        const yk = ysKey(s.year, day, sl);
+        yearSlotLoad.set(yk, (yearSlotLoad.get(yk) ?? 0) + 1);
       }
-      subjectDay.get(s.id)!.add(day);
+      const counts = subjectDay.get(s.id)!;
+      counts[day] = (counts[day] ?? 0) + (endSlot - startSlot + 1);
+    }
+
+    // Score a candidate placement — lower is better.
+    // Prefer: days where this subject has fewer hours; year-slots that are emptier;
+    // avoid placing immediately adjacent to the same subject the same day.
+    function score(s: SubjectRow, day: number, startSlot: number, endSlot: number): number {
+      const counts = subjectDay.get(s.id)!;
+      const sameDayLoad = counts[day] ?? 0;
+      let slotLoad = 0;
+      for (let sl = startSlot; sl <= endSlot; sl++) slotLoad += yearSlotLoad.get(ysKey(s.year, day, sl)) ?? 0;
+      // Adjacent same-subject penalty
+      let adj = 0;
+      for (const b of placed) {
+        if (b.subject_id !== s.id || b.day !== day) continue;
+        if (b.end_slot + 1 === startSlot || endSlot + 1 === b.start_slot) adj += 5;
+      }
+      return sameDayLoad * 10 + slotLoad * 3 + adj + rand();
+    }
+
+    type Cand = { day: number; start: number; end: number; roomId: string; score: number };
+
+    function bestSingle(s: SubjectRow, candidateRooms: RoomRow[]): Cand | null {
+      const days = shuffle([...Array(DAYS_COUNT).keys()]);
+      const slots = shuffle([...Array(SLOTS_PER_DAY).keys()]);
+      let best: Cand | null = null;
+      for (const day of days) for (const slot of slots) for (const room of candidateRooms) {
+        if (!slotFreeFor(s, day, slot, room.id)) continue;
+        const sc = score(s, day, slot, slot);
+        if (!best || sc < best.score) best = { day, start: slot, end: slot, roomId: room.id, score: sc };
+      }
+      return best;
+    }
+
+    function bestPair(s: SubjectRow, candidateRooms: RoomRow[]): Cand | null {
+      const days = shuffle([...Array(DAYS_COUNT).keys()]);
+      const starts = shuffle([...TWO_HOUR_STARTS]);
+      let best: Cand | null = null;
+      for (const day of days) for (const start of starts) for (const room of candidateRooms) {
+        const end = start + 1;
+        if (!slotFreeFor(s, day, start, room.id) || !slotFreeFor(s, day, end, room.id)) continue;
+        const sc = score(s, day, start, end);
+        if (!best || sc < best.score) best = { day, start, end, roomId: room.id, score: sc };
+      }
+      return best;
     }
 
     for (const s of ordered) {
@@ -129,49 +190,24 @@ export const generateTimetable = createServerFn({ method: "POST" })
         unschedulable.push({ code: s.code, name: s.name, reason: `no room with capacity ≥ ${enrolled}` });
         continue;
       }
-      subjectDay.set(s.id, new Set());
+      subjectDay.set(s.id, []);
       let remaining = s.credit;
 
-      // 1) Place 2-hour consecutive blocks first if requested
       if (s.is_consecutive) {
         const pairs = Math.floor(remaining / 2);
         for (let i = 0; i < pairs; i++) {
-          let done = false;
-          for (let pass = 0; pass < 2 && !done; pass++) {
-            for (let day = 0; day < DAYS_COUNT && !done; day++) {
-              if (pass === 0 && subjectDay.get(s.id)!.has(day)) continue;
-              for (const start of TWO_HOUR_STARTS) {
-                const end = start + 1;
-                for (const room of candidateRooms) {
-                  if (slotFreeFor(s, day, start, room.id) && slotFreeFor(s, day, end, room.id)) {
-                    commit(s, day, start, end, room.id);
-                    remaining -= 2;
-                    done = true;
-                    break;
-                  }
-                }
-                if (done) break;
-              }
-            }
-          }
-          if (!done) break;
+          const c = bestPair(s, candidateRooms);
+          if (!c) break;
+          commit(s, c.day, c.start, c.end, c.roomId);
+          remaining -= 2;
         }
       }
 
-      // 2) Place remaining hours as single slots, spread across days
-      for (let pass = 0; pass < 2 && remaining > 0; pass++) {
-        for (let slot = 0; slot < SLOTS_PER_DAY && remaining > 0; slot++) {
-          for (let day = 0; day < DAYS_COUNT && remaining > 0; day++) {
-            if (pass === 0 && subjectDay.get(s.id)!.has(day)) continue;
-            for (const room of candidateRooms) {
-              if (slotFreeFor(s, day, slot, room.id)) {
-                commit(s, day, slot, slot, room.id);
-                remaining--;
-                break;
-              }
-            }
-          }
-        }
+      while (remaining > 0) {
+        const c = bestSingle(s, candidateRooms);
+        if (!c) break;
+        commit(s, c.day, c.start, c.end, c.roomId);
+        remaining--;
       }
 
       if (remaining > 0) {
