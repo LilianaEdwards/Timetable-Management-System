@@ -1,19 +1,36 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { brokeredPreviewStorage } from "@/integrations/supabase/previewAuthStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/auth")({
-  beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) throw redirect({ to: "/" });
-  },
-  head: () => ({ meta: [{ title: "Sign in — Timetable Management" }] }),
+  head: () => ({
+    meta: [
+      { title: "Sign in — UCSM Timetable" },
+      { name: "description", content: "Sign in to the UCSM Timetable Management System." },
+      { property: "og:title", content: "Sign in — UCSM Timetable" },
+      { property: "og:description", content: "Sign in to the UCSM Timetable Management System." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AuthPage,
 });
+
+async function clearSavedLogin() {
+  const backendUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!backendUrl || typeof window === "undefined") return;
+
+  const projectRef = new URL(backendUrl).hostname.split(".")[0];
+  if (!projectRef) return;
+
+  const storage = brokeredPreviewStorage();
+  await storage?.removeItem(`sb-${projectRef}-auth-token`);
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -22,29 +39,42 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    if (mode === "signin") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setFormError("");
+
+    try {
+      await clearSavedLogin();
+
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success("Welcome back!");
+        await navigate({ to: "/" });
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: { full_name: fullName || email },
+          },
+        });
+        if (error) throw error;
+        toast.success("Account created. You can sign in now.");
+        setMode("signin");
+      }
+    } catch (error) {
+      const message = error instanceof Error && error.message !== "Failed to fetch"
+        ? error.message
+        : "The login service could not be reached. Please try again.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
       setLoading(false);
-      if (error) return toast.error(error.message);
-      toast.success("Welcome back!");
-      navigate({ to: "/" });
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { full_name: fullName || email },
-        },
-      });
-      setLoading(false);
-      if (error) return toast.error(error.message);
-      toast.success("Account created. You can sign in now.");
-      setMode("signin");
     }
   };
 
@@ -91,25 +121,32 @@ function AuthPage() {
           >
             {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Sign up"}
           </Button>
+          {formError && (
+            <p role="alert" className="text-sm text-destructive">
+              {formError}
+            </p>
+          )}
         </form>
 
         <div className="mt-6 text-center text-sm">
           {mode === "signin" ? (
-            <button
+            <Button
               type="button"
-              className="text-brand-deep font-medium hover:underline"
+              variant="link"
+              className="h-auto p-0 text-brand-deep"
               onClick={() => setMode("signup")}
             >
               Don&apos;t have an account? Sign up
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
-              className="text-brand-deep font-medium hover:underline"
+              variant="link"
+              className="h-auto p-0 text-brand-deep"
               onClick={() => setMode("signin")}
             >
               Already have an account? Sign in
-            </button>
+            </Button>
           )}
         </div>
       </div>
