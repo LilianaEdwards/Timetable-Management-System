@@ -26,8 +26,10 @@ export const Route = createFileRoute("/generate")({
 
 function GeneratePage() {
   const run = useServerFn(generateTimetable);
+  const remove = useServerFn(deleteTimetable);
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [semester, setSemester] = useState<"1" | "2">("1");
   const [result, setResult] = useState<Awaited<ReturnType<typeof generateTimetable>> | null>(null);
 
