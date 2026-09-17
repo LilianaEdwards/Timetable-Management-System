@@ -1,6 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { LayoutDashboard, PlusCircle, FileEdit, Sparkles, CalendarDays, CalendarCheck, LogOut, Menu, Search } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -21,10 +22,22 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, isAdmin, isLecturer, isStudent } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      await supabase.auth.signOut();
+    } catch {
+      // Always land on the sign-in page, even if the network hiccups.
+    } finally {
+      setSigningOut(false);
+      navigate({ to: "/auth", replace: true });
+    }
   };
 
   return (
@@ -86,10 +99,11 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
             })}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-4 h-14 pl-6 pr-4 mt-4 border-l-4 border-transparent text-foreground hover:bg-muted hover:border-destructive/40 text-left"
+              disabled={signingOut}
+              className="flex items-center gap-4 h-14 pl-6 pr-4 mt-4 border-l-4 border-transparent text-foreground hover:bg-muted hover:border-destructive/40 text-left disabled:opacity-60"
             >
               <LogOut className="h-6 w-6 shrink-0" />
-              {open && <span className="font-medium">Logout</span>}
+              {open && <span className="font-medium">{signingOut ? "Signing out…" : "Logout"}</span>}
             </button>
           </nav>
         </aside>

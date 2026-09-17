@@ -3,12 +3,16 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { generateTimetable } from "@/lib/timetable.functions";
+import { generateTimetable, deleteTimetable } from "@/lib/timetable.functions";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/generate")({
   beforeLoad: async () => {
@@ -22,8 +26,10 @@ export const Route = createFileRoute("/generate")({
 
 function GeneratePage() {
   const run = useServerFn(generateTimetable);
+  const remove = useServerFn(deleteTimetable);
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [semester, setSemester] = useState<"1" | "2">("1");
   const [result, setResult] = useState<Awaited<ReturnType<typeof generateTimetable>> | null>(null);
 
@@ -37,6 +43,18 @@ function GeneratePage() {
     } catch (e: any) {
       toast.error(e.message ?? "Generation failed");
     } finally { setBusy(false); }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await remove({ data: { semester: Number(semester) } });
+      setResult(null);
+      qc.invalidateQueries();
+      toast.success(`Semester ${semester} timetable deleted`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Delete failed");
+    } finally { setDeleting(false); }
   };
 
   return (
@@ -61,9 +79,28 @@ function GeneratePage() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleGenerate} disabled={busy} className="bg-brand-deep hover:bg-brand h-14 px-8 text-base">
+          <Button onClick={handleGenerate} disabled={busy || deleting} className="bg-brand-deep hover:bg-brand h-14 px-8 text-base">
             {busy ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Working…</> : <><Sparkles className="mr-2 h-5 w-5" /> Generate</>}
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={busy || deleting} className="h-14 px-6 text-base border-destructive/40 text-destructive hover:bg-destructive/10">
+                {deleting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Deleting…</> : <><Trash2 className="mr-2 h-5 w-5" /> Delete timetable</>}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete the Semester {semester} timetable?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes every scheduled class for Semester {semester}. Subjects, rooms, students and lecturers are not affected, and you can generate again at any time.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {result && (

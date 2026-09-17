@@ -255,3 +255,22 @@ export const generateTimetable = createServerFn({ method: "POST" })
       slots: SLOT_LABELS,
     };
   });
+
+/** Admin-only: remove every saved timetable entry for one semester. */
+export const deleteTimetable = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { semester: number }) => ({ semester: d.semester === 2 ? 2 : 1 }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Only admins can delete timetables");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("timetable_entries")
+      .delete()
+      .eq("semester", data.semester);
+    if (error) throw new Error("Failed to delete timetable: " + error.message);
+
+    return { semester: data.semester };
+  });
