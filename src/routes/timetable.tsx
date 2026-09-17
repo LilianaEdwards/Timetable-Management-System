@@ -59,10 +59,8 @@ function TimetablePage() {
     for (let s = e.start_slot; s <= e.end_slot; s++) grid[e.day][s].push(e);
   }
 
-  const options =
-    mode === "student" ? (students ?? []).map((s: any) => ({ value: s.id, label: `${s.student_no} — ${s.name}` }))
-    : mode === "lecturer" ? (lecturers ?? []).map((l: any) => ({ value: l.id, label: l.name }))
-    : mode === "room" ? (rooms ?? []).map((r: any) => ({ value: r.id, label: r.name }))
+  const options: { value: string; label: string }[] =
+    mode === "room" ? (rooms ?? []).map((r: any) => ({ value: r.id, label: r.name }))
     : mode === "year" ? [1, 2, 3, 4, 5].map(y => ({ value: String(y), label: `Year ${y}` }))
     : [];
 
@@ -88,8 +86,6 @@ function TimetablePage() {
                 <SelectContent>
                   <SelectItem value="all">All scheduled</SelectItem>
                   <SelectItem value="year">By year</SelectItem>
-                  <SelectItem value="student">By student</SelectItem>
-                  <SelectItem value="lecturer">By lecturer</SelectItem>
                   <SelectItem value="room">By room</SelectItem>
                 </SelectContent>
               </Select>
