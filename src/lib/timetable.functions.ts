@@ -24,6 +24,27 @@ type Block = {
 const SLOTS_PER_DAY = SLOT_LABELS.length; // 6
 const DAYS_COUNT = DAYS.length;            // 5
 
+const norm = (v: string) => v.trim().toUpperCase().replace(/[\s_]+/g, "-");
+/** Tokens listed in a subject's joint field (codes of partner subjects or a shared group name). */
+function jointTokens(s: SubjectRow): string[] {
+  return (s.joint_group ?? "")
+    .split(/[,;/|]+/)
+    .map(norm)
+    .filter(Boolean);
+}
+/**
+ * Two subjects are joint (must never share a timeslot) when:
+ *  - they list the same group name, or
+ *  - one lists the other's subject code (e.g. CS-2011 joint_group = "CST-1011").
+ */
+function jointConflict(a: SubjectRow, b: SubjectRow): boolean {
+  const ta = jointTokens(a), tb = jointTokens(b);
+  if (!ta.length && !tb.length) return false;
+  const ca = norm(a.code), cb = norm(b.code);
+  if (ta.includes(cb) || tb.includes(ca)) return true;
+  return ta.some(t => t !== ca && t !== cb && tb.includes(t));
+}
+
 /**
  * Credit-based scheduler with optional 2-hour consecutive blocks.
  *  - Each subject gets `credit` hours/week.
@@ -74,7 +95,7 @@ export const generateTimetable = createServerFn({ method: "POST" })
         const a = subjects[i], b = subjects[j];
         let c = false;
         if (a.lecturer_id && a.lecturer_id === b.lecturer_id) c = true;
-        if (!c && a.joint_group && b.joint_group && a.joint_group === b.joint_group) c = true;
+        if (!c && jointConflict(a, b)) c = true;
         if (!c && a.year === b.year) c = true;
         if (!c) {
           const sa = studentsBySubject.get(a.id)!, sb = studentsBySubject.get(b.id)!;
