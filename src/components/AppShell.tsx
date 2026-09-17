@@ -99,6 +99,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
             })}
             <button
               onClick={handleLogout}
+              disabled={signingOut}
               className="flex items-center gap-4 h-14 pl-6 pr-4 mt-4 border-l-4 border-transparent text-foreground hover:bg-muted hover:border-destructive/40 text-left"
             >
               <LogOut className="h-6 w-6 shrink-0" />
