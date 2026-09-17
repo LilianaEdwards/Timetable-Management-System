@@ -23,8 +23,18 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      await supabase.auth.signOut();
+    } catch {
+      // Always land on the sign-in page, even if the network hiccups.
+    } finally {
+      setSigningOut(false);
+      navigate({ to: "/auth", replace: true });
+    }
   };
 
   return (
