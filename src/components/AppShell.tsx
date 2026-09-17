@@ -1,6 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { LayoutDashboard, PlusCircle, FileEdit, Sparkles, CalendarDays, CalendarCheck, LogOut, Menu, Search } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,8 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, isAdmin, isLecturer, isStudent } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleLogout = async () => {
     if (signingOut) return;
