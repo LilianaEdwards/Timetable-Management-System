@@ -45,6 +45,18 @@ function GeneratePage() {
     } finally { setBusy(false); }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await remove({ data: { semester: Number(semester) } });
+      setResult(null);
+      qc.invalidateQueries();
+      toast.success(`Semester ${semester} timetable deleted`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Delete failed");
+    } finally { setDeleting(false); }
+  };
+
   return (
     <AppShell title="Generate Timetable">
       <div className="bg-surface-2 rounded-2xl p-8 shadow-[3px_3px_10px_rgba(188,188,188,0.4)]">
