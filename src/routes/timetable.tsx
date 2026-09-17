@@ -18,7 +18,7 @@ export const Route = createFileRoute("/timetable")({
   component: TimetablePage,
 });
 
-type ViewMode = "all" | "year" | "student" | "lecturer" | "room";
+type ViewMode = "all" | "year" | "room";
 
 function TimetablePage() {
   const { isAdmin } = useAuth();
@@ -42,13 +42,6 @@ function TimetablePage() {
       .eq("semester", Number(semester))
     ).data ?? [],
   });
-  const { data: regs } = useQuery({
-    queryKey: ["registrations-flat"],
-    enabled: isAdmin,
-    queryFn: async () => (await supabase.from("registrations").select("student_id,subject_id")).data ?? [],
-  });
-  const { data: students } = useQuery({ queryKey: ["students-list"], enabled: isAdmin, queryFn: async () => (await supabase.from("students").select("id,student_no,name").order("name")).data ?? [] });
-  const { data: lecturers } = useQuery({ queryKey: ["lecturers-list"], enabled: isAdmin, queryFn: async () => (await supabase.from("lecturers").select("id,name").order("name")).data ?? [] });
   const { data: rooms } = useQuery({ queryKey: ["rooms-list"], queryFn: async () => (await supabase.from("rooms").select("id,name").order("name")).data ?? [] });
 
   const filtered = useMemo(() => {
@@ -57,13 +50,8 @@ function TimetablePage() {
     if (!selected) return [];
     if (mode === "year") return all.filter((e: any) => String(e.subjects?.year) === selected);
     if (mode === "room") return all.filter((e: any) => e.room_id === selected);
-    if (mode === "lecturer") return all.filter((e: any) => e.subjects?.lecturer_id === selected);
-    if (mode === "student") {
-      const subjectIds = new Set((regs ?? []).filter((r: any) => r.student_id === selected).map((r: any) => r.subject_id));
-      return all.filter((e: any) => subjectIds.has(e.subject_id));
-    }
     return all;
-  }, [entries, regs, mode, selected]);
+  }, [entries, mode, selected]);
 
   // Grid: rows = day, columns = slot
   const grid: any[][][] = DAYS.map(() => SLOT_LABELS.map(() => []));
