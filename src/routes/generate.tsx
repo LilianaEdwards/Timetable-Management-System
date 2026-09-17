@@ -79,9 +79,28 @@ function GeneratePage() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleGenerate} disabled={busy} className="bg-brand-deep hover:bg-brand h-14 px-8 text-base">
+          <Button onClick={handleGenerate} disabled={busy || deleting} className="bg-brand-deep hover:bg-brand h-14 px-8 text-base">
             {busy ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Working…</> : <><Sparkles className="mr-2 h-5 w-5" /> Generate</>}
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={busy || deleting} className="h-14 px-6 text-base border-destructive/40 text-destructive hover:bg-destructive/10">
+                {deleting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Deleting…</> : <><Trash2 className="mr-2 h-5 w-5" /> Delete timetable</>}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete the Semester {semester} timetable?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes every scheduled class for Semester {semester}. Subjects, rooms, students and lecturers are not affected, and you can generate again at any time.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {result && (
