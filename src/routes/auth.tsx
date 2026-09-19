@@ -50,10 +50,15 @@ function AuthPage() {
       await clearSavedLogin();
 
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back!");
-        await navigate({ to: "/" });
+        let isAdmin = false;
+        if (data.user) {
+          const { data: adminCheck } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
+          isAdmin = Boolean(adminCheck);
+        }
+        await navigate({ to: isAdmin ? "/" : "/my-schedule", replace: true });
       } else {
         const { error } = await supabase.auth.signUp({
           email,
