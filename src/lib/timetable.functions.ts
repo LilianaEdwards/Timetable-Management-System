@@ -346,3 +346,89 @@ export const deleteTimetable = createServerFn({ method: "POST" })
 
     return { semester: data.semester };
   });
+
+/** Admin-only: manually move one class to another day / time / room, with clash checks. */
+export const moveTimetableEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { entryId: string; day: number; startSlot: number; roomId: string }) => ({
+    entryId: String(d.entryId),
+    day: Math.max(0, Math.min(DAYS.length - 1, Number(d.day))),
+    startSlot: Math.max(0, Math.min(SLOT_LABELS.length - 1, Number(d.startSlot))),
+    roomId: String(d.roomId),
+  }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Only admins can edit the timetable");
+
+    const { data: entry } = await supabase
+      .from("timetable_entries")
+      .select("id,subject_id,room_id,day,start_slot,end_slot,semester")
+      .eq("id", data.entryId)
+      .maybeSingle();
+    if (!entry) throw new Error("This class no longer exists");
+
+    const span = entry.end_slot - entry.start_slot;
+    const endSlot = data.startSlot + span;
+    if (endSlot > SLOT_LABELS.length - 1) throw new Error("This class does not fit in the selected time");
+
+    const [{ data: subjectsAll }, { data: regs }, { data: room }] = await Promise.all([
+      supabase.from("subjects").select("id,code,name,lecturer_id,duration_hours,credit,year,semester,joint_group,is_consecutive"),
+      supabase.from("registrations").select("student_id,subject_id"),
+      supabase.from("rooms").select("id,name,capacity").eq("id", data.roomId).maybeSingle(),
+    ]);
+    if (!room) throw new Error("Room not found");
+
+    const subjects = (subjectsAll ?? []) as SubjectRow[];
+    const byId = new Map(subjects.map(s => [s.id, s]));
+    const me = byId.get(entry.subject_id);
+    if (!me) throw new Error("Subject not found");
+
+    const studentsOf = (subjectId: string) =>
+      new Set(((regs ?? []) as RegRow[]).filter(r => r.subject_id === subjectId).map(r => r.student_id));
+    const mine = studentsOf(me.id);
+    if (room.capacity < mine.size) throw new Error(`${room.name} holds ${room.capacity}, but ${mine.size} students are registered`);
+
+    const { data: others } = await supabase
+      .from("timetable_entries")
+      .select("id,subject_id,room_id,day,start_slot,end_slot")
+      .eq("semester", entry.semester)
+      .eq("day", data.day)
+      .neq("id", entry.id);
+
+    for (const o of others ?? []) {
+      if (endSlot < o.start_slot || data.startSlot > o.end_slot) continue;
+      const os = byId.get(o.subject_id);
+      if (o.room_id === data.roomId) throw new Error(`${room.name} is already used at that time`);
+      if (!os) continue;
+      if (os.id === me.id) throw new Error(`${me.code} already has a class at that time`);
+      if (me.lecturer_id && me.lecturer_id === os.lecturer_id) throw new Error(`The lecturer already teaches ${os.code} at that time`);
+      if (jointConflict(me, os)) throw new Error(`${me.code} is joint with ${os.code}, which is at that time`);
+      if (me.year === os.year) throw new Error(`Year ${os.year} already has ${os.code} at that time`);
+      const so = studentsOf(os.id);
+      for (const sid of mine) if (so.has(sid)) throw new Error(`Some students are already in ${os.code} at that time`);
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("timetable_entries")
+      .update({ day: data.day, start_slot: data.startSlot, end_slot: endSlot, room_id: data.roomId })
+      .eq("id", entry.id);
+    if (error) throw new Error("Could not save the change: " + error.message);
+
+    return { ok: true as const };
+  });
+
+/** Admin-only: remove a single class from the timetable. */
+export const deleteTimetableEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { entryId: string }) => ({ entryId: String(d.entryId) }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Only admins can edit the timetable");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("timetable_entries").delete().eq("id", data.entryId);
+    if (error) throw new Error("Could not remove the class: " + error.message);
+    return { ok: true as const };
+  });
