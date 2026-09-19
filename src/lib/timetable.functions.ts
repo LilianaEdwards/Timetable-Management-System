@@ -115,6 +115,7 @@ export const generateTimetable = createServerFn({ method: "POST" })
       return b.credit - a.credit;
     });
 
+    const byId = new Map(subjects.map(s => [s.id, s]));
     const placed: Block[] = [];
     const roomBusy = new Map<string, Set<string>>();
     const subjectDay = new Map<string, number[]>(); // day -> count placed
@@ -148,6 +149,17 @@ export const generateTimetable = createServerFn({ method: "POST" })
       return true;
     }
 
+    /** Already-placed blocks that clash with s over [startSlot, endSlot] on `day`. */
+    function blockers(s: SubjectRow, day: number, startSlot: number, endSlot: number): Block[] {
+      const out: Block[] = [];
+      for (const b of placed) {
+        if (b.day !== day) continue;
+        if (endSlot < b.start_slot || startSlot > b.end_slot) continue;
+        if (b.subject_id === s.id || conflicts.get(s.id)?.has(b.subject_id)) out.push(b);
+      }
+      return out;
+    }
+
     function commit(s: SubjectRow, day: number, startSlot: number, endSlot: number, roomId: string) {
       placed.push({ subject_id: s.id, room_id: roomId, day, start_slot: startSlot, end_slot: endSlot, semester });
       for (let sl = startSlot; sl <= endSlot; sl++) {
@@ -158,6 +170,23 @@ export const generateTimetable = createServerFn({ method: "POST" })
       }
       const counts = subjectDay.get(s.id)!;
       counts[day] = (counts[day] ?? 0) + (endSlot - startSlot + 1);
+    }
+
+    /** Reverse of commit — used by the repair pass when relocating a block. */
+    function uncommit(b: Block) {
+      const i = placed.indexOf(b);
+      if (i < 0) return;
+      placed.splice(i, 1);
+      const subj = byId.get(b.subject_id);
+      for (let sl = b.start_slot; sl <= b.end_slot; sl++) {
+        roomBusy.get(key(b.day, sl))?.delete(b.room_id);
+        if (subj) {
+          const yk = ysKey(subj.year, b.day, sl);
+          yearSlotLoad.set(yk, Math.max(0, (yearSlotLoad.get(yk) ?? 0) - 1));
+        }
+      }
+      const counts = subjectDay.get(b.subject_id);
+      if (counts) counts[b.day] = Math.max(0, (counts[b.day] ?? 0) - (b.end_slot - b.start_slot + 1));
     }
 
     // Score a candidate placement — lower is better.
@@ -179,34 +208,45 @@ export const generateTimetable = createServerFn({ method: "POST" })
 
     type Cand = { day: number; start: number; end: number; roomId: string; score: number };
 
-    function bestSingle(s: SubjectRow, candidateRooms: RoomRow[]): Cand | null {
+    function bestSingle(s: SubjectRow, candidateRooms: RoomRow[], spread = true): Cand | null {
+      const counts = subjectDay.get(s.id) ?? [];
       const days = shuffle([...Array(DAYS_COUNT).keys()]);
       const slots = shuffle([...Array(SLOTS_PER_DAY).keys()]);
       let best: Cand | null = null;
-      for (const day of days) for (const slot of slots) for (const room of candidateRooms) {
-        if (!slotFreeFor(s, day, slot, room.id)) continue;
-        const sc = score(s, day, slot, slot);
-        if (!best || sc < best.score) best = { day, start: slot, end: slot, roomId: room.id, score: sc };
+      for (const day of days) {
+        if (spread && (counts[day] ?? 0) > 0) continue; // one session per subject per day
+        for (const slot of slots) for (const room of candidateRooms) {
+          if (!slotFreeFor(s, day, slot, room.id)) continue;
+          const sc = score(s, day, slot, slot);
+          if (!best || sc < best.score) best = { day, start: slot, end: slot, roomId: room.id, score: sc };
+        }
       }
       return best;
     }
 
-    function bestPair(s: SubjectRow, candidateRooms: RoomRow[]): Cand | null {
+    function bestPair(s: SubjectRow, candidateRooms: RoomRow[], spread = true): Cand | null {
+      const counts = subjectDay.get(s.id) ?? [];
       const days = shuffle([...Array(DAYS_COUNT).keys()]);
       const starts = shuffle([...TWO_HOUR_STARTS]);
       let best: Cand | null = null;
-      for (const day of days) for (const start of starts) for (const room of candidateRooms) {
-        const end = start + 1;
-        if (!slotFreeFor(s, day, start, room.id) || !slotFreeFor(s, day, end, room.id)) continue;
-        const sc = score(s, day, start, end);
-        if (!best || sc < best.score) best = { day, start, end, roomId: room.id, score: sc };
+      for (const day of days) {
+        if (spread && (counts[day] ?? 0) > 0) continue;
+        for (const start of starts) for (const room of candidateRooms) {
+          const end = start + 1;
+          if (!slotFreeFor(s, day, start, room.id) || !slotFreeFor(s, day, end, room.id)) continue;
+          const sc = score(s, day, start, end);
+          if (!best || sc < best.score) best = { day, start, end, roomId: room.id, score: sc };
+        }
       }
       return best;
     }
 
+    const roomsFor = (s: SubjectRow) =>
+      sortedRooms.filter(r => r.capacity >= (studentsBySubject.get(s.id)?.size ?? 0));
+
     for (const s of ordered) {
       const enrolled = studentsBySubject.get(s.id)!.size;
-      const candidateRooms = sortedRooms.filter(r => r.capacity >= enrolled);
+      const candidateRooms = roomsFor(s);
       if (!candidateRooms.length) {
         unschedulable.push({ code: s.code, name: s.name, reason: `no room with capacity ≥ ${enrolled}` });
         continue;
@@ -217,7 +257,7 @@ export const generateTimetable = createServerFn({ method: "POST" })
       if (s.is_consecutive) {
         const pairs = Math.floor(remaining / 2);
         for (let i = 0; i < pairs; i++) {
-          const c = bestPair(s, candidateRooms);
+          const c = bestPair(s, candidateRooms) ?? bestPair(s, candidateRooms, false);
           if (!c) break;
           commit(s, c.day, c.start, c.end, c.roomId);
           remaining -= 2;
@@ -225,10 +265,42 @@ export const generateTimetable = createServerFn({ method: "POST" })
       }
 
       while (remaining > 0) {
-        const c = bestSingle(s, candidateRooms);
+        const c = bestSingle(s, candidateRooms) ?? bestSingle(s, candidateRooms, false);
         if (!c) break;
         commit(s, c.day, c.start, c.end, c.roomId);
         remaining--;
+      }
+
+      // Repair pass: free a blocked slot by relocating one single-hour block elsewhere.
+      while (remaining > 0) {
+        let progressed = false;
+        for (const day of shuffle([...Array(DAYS_COUNT).keys()])) {
+          for (const slot of shuffle([...Array(SLOTS_PER_DAY).keys()])) {
+            const bl = blockers(s, day, slot, slot);
+            if (bl.length !== 1) continue;
+            const victim = bl[0];
+            if (victim.start_slot !== victim.end_slot) continue;
+            const vs = byId.get(victim.subject_id);
+            if (!vs || vs.id === s.id) continue;
+            const origin = { ...victim };
+            uncommit(victim);
+            const alt = bestSingle(vs, roomsFor(vs), false);
+            if (!alt || (alt.day === day && alt.start === slot)) {
+              commit(vs, origin.day, origin.start_slot, origin.end_slot, origin.room_id);
+              continue;
+            }
+            commit(vs, alt.day, alt.start, alt.end, alt.roomId);
+            const c = bestSingle(s, candidateRooms, false);
+            if (c) {
+              commit(s, c.day, c.start, c.end, c.roomId);
+              remaining--;
+              progressed = true;
+              break;
+            }
+          }
+          if (progressed) break;
+        }
+        if (!progressed) break;
       }
 
       if (remaining > 0) {
